@@ -1,13 +1,42 @@
 version: 0.2
+
 phases:
-  build:
+  pre_build:
     commands:
       - echo "Packaging JAR files..."
-      - mvn clean package
+      - aws --version
+      - echo "Logging into Amazon ECR..."
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 590183733204.dkr.ecr.ap-south-1.amazonaws.com
+      - echo "Setting repository URI..."
+      - REPOSITORY_URI=590183733204.dkr.ecr.ap-south-1.amazonaws.com/rjngaonserver
+      - echo "Setting Image tag..."
+      - IMAGE_TAG=build-$(echo $CODEBUILD_BUILD_ID | awk -F":" '{print $2}')
+
+  build:
+    commands:
+      - echo "Building and tagging started image on date"
+      - echo "Running mvn clean install..."
+      - mvn clean install
+      - echo "Building the Docker Image..."
+      - docker build -t $REPOSITORY_URI:latest .
+      - echo "Tagging the Docker Image..."
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      - echo "Build complete."
+
   post_build:
     commands:
-      - echo "Build complete."
+      - echo "Pushing Docker Image to Amazon ECR Started on $(date)"
+      - echo "Pushing to repository..."
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo "Setting container name..."
+      - DOCKER_CONTAINER_NAME=taxcollection
+      - echo "Writing image definition file..."
+      - printf '[{"name":"%s","imageUrl":"%s"}]' $DOCKER_CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinition.json
+      - echo $DOCKER_CONTAINER_NAME
+      - echo "Printing imagedefinition.json..."
+      - cat imagedefinition.json
+
 artifacts:
   files:
-    - target/taxcollection.jar
-  discard-paths: yes
+    - imagedefinition.json

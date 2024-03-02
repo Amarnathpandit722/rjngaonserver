@@ -1,4 +1,14 @@
-FROM openjdk:8
+FROM maven:3.9.5 AS build
+WORKDIR /taxcollection
+COPY pom.xml /taxcollection
+RUN mvn dependency:resolve
+COPY . /taxcollection
+RUN mvn clean
+RUN mvn package -DskipTests -X
+
+
+
+FROM openjdk
+COPY --from=build /taxcollection/target/*.jar taxcollection.jar
 EXPOSE 8084
-ADD target/taxcollection.jar taxcollection.jar
-ENTRYPOINT ["java","-jar","/taxcollection.jar"]
+CMD ["java", "-jar", "taxcollection.jar"]4r
