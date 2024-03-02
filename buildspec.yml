@@ -1,42 +1,39 @@
 version: 0.2
-
 phases:
   pre_build:
     commands:
       - echo "Packaging JAR files..."
       - aws --version
-      - echo "Logging into Amazon ECR..."
+      - echo Logging into Amazon ECR...
       - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 590183733204.dkr.ecr.ap-south-1.amazonaws.com
-      - echo "Setting repository URI..."
+      - echo setting repository URI.......
       - REPOSITORY_URI=590183733204.dkr.ecr.ap-south-1.amazonaws.com/rjngaonserver
-      - echo "Setting Image tag..."
+      - echo setting Image tag.... 
       - IMAGE_TAG=build-$(echo $CODEBUILD_BUILD_ID | awk -F":" '{print $2}')
-
   build:
     commands:
-      - echo "Building and tagging started image on date"
-      - echo "Running mvn clean install..."
+      - echo building and taggging started image on date
+      - echo running mvn clean install....
       - mvn clean install
-      - echo "Building the Docker Image..."
+      - echo building the Docker Image.....
       - docker build -t $REPOSITORY_URI:latest .
-      - echo "Tagging the Docker Image..."
+      - echo tagging the Docker Image....
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
       - echo "Build complete."
-
   post_build:
-    commands:
-      - echo "Pushing Docker Image to Amazon ECR Started on $(date)"
-      - echo "Pushing to repository..."
+      commands:
+      - echo pushing Docker Image to Amazon ECR Started on `date`
+      - echo pushing to repository
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "Setting container name..."
+      - echo setting conatiner name.....
       - DOCKER_CONTAINER_NAME=taxcollection
-      - echo "Writing image definition file..."
+      - echo writing image definition file.....
       - printf '[{"name":"%s","imageUrl":"%s"}]' $DOCKER_CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinition.json
       - echo $DOCKER_CONTAINER_NAME
-      - echo "Printing imagedefinition.json..."
+      - echo printing imagedefinition.json
       - cat imagedefinition.json
-
 artifacts:
   files:
     - imagedefinition.json
+  
